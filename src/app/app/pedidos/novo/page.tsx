@@ -1,0 +1,5 @@
+import { auth } from "@/auth";
+import { getAvailableLockers, getCheckoutConfig, getCustomerAddresses, getCustomerCheckoutProfile, getServices } from "@/lib/data";
+import { PageHeader } from "@/components/layout/page-header";
+import { CheckoutForm } from "@/components/customer/checkout-form";
+export default async function Page(){const s=await auth();const[services,addresses,lockers,config,profile]=await Promise.all([getServices(),getCustomerAddresses(s!.user.id),getAvailableLockers(),getCheckoutConfig(),getCustomerCheckoutProfile(s!.user.id)]);return <div className="page-container"><PageHeader title="Novo pedido" description="Selecione os serviços, agende a coleta e escolha como pagar."/><CheckoutForm user={{name:s?.user.name,email:s?.user.email,phone:profile?.phone}} services={services.map((x:any)=>({...x,price:Number(x.price)}))} addresses={addresses as any} lockers={lockers as any} slots={config.slots as any} paymentOptions={{pix:config.settings.pixEnabled,credit:config.settings.creditCardEnabled,debit:config.settings.debitCardEnabled}} defaultDeliveryHours={config.settings.defaultDeliveryHours}/></div>}

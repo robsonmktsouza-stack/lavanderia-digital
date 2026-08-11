@@ -1,0 +1,2 @@
+import { requireRole } from "@/lib/access";import { prisma } from "@/lib/prisma";import { AppShell } from "@/components/layout/app-shell";
+export default async function Layout({children}:{children:React.ReactNode}){const s=await requireRole(["CUSTOMER"]);const settings=prisma?await prisma.systemSetting.findUnique({where:{id:"main"},select:{whatsapp:true}}):{whatsapp:process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP??"5511999999999"};return <AppShell role="CUSTOMER" userName={s.user.name} supportWhatsapp={settings?.whatsapp}>{children}</AppShell>}

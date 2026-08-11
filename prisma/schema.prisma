@@ -1,0 +1,466 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+  MANAGER
+  ATTENDANT
+  DRIVER
+  EMPLOYEE
+}
+
+enum UserStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum ServiceUnit {
+  ITEM
+  KG
+  BAG
+  SERVICE
+}
+
+enum OrderStatus {
+  DRAFT
+  AWAITING_PAYMENT
+  CONFIRMED
+  COLLECTION_SCHEDULED
+  DRIVER_EN_ROUTE_COLLECTION
+  COLLECTED
+  RECEIVED_AT_LAUNDRY
+  IN_PROCESS
+  READY_FOR_DELIVERY
+  DELIVERY_SCHEDULED
+  DRIVER_EN_ROUTE_DELIVERY
+  DELIVERED
+  CANCELED
+}
+
+enum PaymentMethod {
+  PIX
+  CREDIT_CARD
+  DEBIT_CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  IN_ANALYSIS
+  DECLINED
+  CANCELED
+  REFUNDED
+}
+
+enum RouteType {
+  COLLECTION
+  DELIVERY
+}
+
+enum RouteStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum ProofType {
+  COLLECTION_PHOTO
+  DELIVERY_PHOTO
+  SIGNATURE
+  CUSTOMER_CONFIRMATION
+  OTHER
+}
+
+enum DiscountType {
+  PERCENT
+  FIXED
+}
+
+enum LockerStatus {
+  AVAILABLE
+  RESERVED
+  OCCUPIED
+  DISABLED
+}
+
+enum LockerAuthorizationStatus {
+  PENDING
+  AUTHORIZED
+  USED
+  EXPIRED
+  REVOKED
+  ERROR
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  STATUS_CHANGE
+  ASSIGN
+  PAYMENT_UPDATE
+  LOCKER_AUTHORIZE
+  LOCATION_UPDATE
+}
+
+model User {
+  id                 String           @id @default(cuid())
+  name               String
+  email              String           @unique
+  passwordHash       String
+  cpf                String?          @unique
+  phone              String?
+  role               UserRole         @default(CUSTOMER)
+  status             UserStatus       @default(ACTIVE)
+  avatarUrl          String?
+  permissions        String[]         @default([])
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  lastLoginAt        DateTime?
+  addresses          Address[]
+  customerOrders     Order[]          @relation("CustomerOrders")
+  assignedOrders     Order[]          @relation("AssignedEmployeeOrders")
+  driverRoutes       DeliveryRoute[]  @relation("DriverRoutes")
+  driverLocations    DriverLocation[]
+  proofs             DeliveryProof[]
+  passwordResetTokens PasswordResetToken[]
+  auditLogs          AuditLog[]       @relation("ActorAuditLogs")
+  statusUpdates      OrderStatusHistory[]
+  staffProfile       StaffProfile?
+}
+
+model StaffProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  document    String?
+  vehicle     String?
+  plate       String?
+  active      Boolean  @default(true)
+  notes       String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String
+  label        String   @default("Principal")
+  recipient    String?
+  postalCode   String
+  street       String
+  number       String
+  complement   String?
+  district     String
+  city         String
+  state        String
+  latitude     Decimal? @db.Decimal(10, 7)
+  longitude    Decimal? @db.Decimal(10, 7)
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  collectionOrders Order[] @relation("CollectionAddress")
+  deliveryOrders   Order[] @relation("DeliveryAddress")
+
+  @@index([userId, isDefault])
+}
+
+model Service {
+  id            String      @id @default(cuid())
+  name          String
+  description   String?     @db.Text
+  unit          ServiceUnit
+  price         Decimal     @db.Decimal(12, 2)
+  minimumQty    Decimal     @default(1) @db.Decimal(12, 2)
+  estimatedHours Int        @default(48)
+  active        Boolean     @default(true)
+  sortOrder     Int         @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  orderItems    OrderItem[]
+}
+
+model ServiceRegion {
+  id             String   @id @default(cuid())
+  name           String
+  city           String
+  state          String
+  postalCodeFrom String?
+  postalCodeTo   String?
+  collectionFee  Decimal  @default(0) @db.Decimal(12, 2)
+  deliveryFee    Decimal  @default(0) @db.Decimal(12, 2)
+  minOrderValue  Decimal  @default(0) @db.Decimal(12, 2)
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model AvailabilitySlot {
+  id          String   @id @default(cuid())
+  weekday     Int
+  startTime   String
+  endTime     String
+  intervalMin Int      @default(60)
+  capacity    Int      @default(10)
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([weekday, active])
+}
+
+model Coupon {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  description String?
+  type        DiscountType
+  value       Decimal      @db.Decimal(12, 2)
+  minOrder    Decimal      @default(0) @db.Decimal(12, 2)
+  maxUses     Int?
+  usedCount   Int          @default(0)
+  startsAt    DateTime?
+  expiresAt   DateTime?
+  active      Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  orders      Order[]
+}
+
+model Order {
+  id                   String            @id @default(cuid())
+  number               String            @unique
+  customerId           String
+  collectionAddressId  String
+  deliveryAddressId    String
+  assignedEmployeeId   String?
+  couponId             String?
+  status               OrderStatus       @default(AWAITING_PAYMENT)
+  collectionAt         DateTime
+  deliveryExpectedAt   DateTime
+  collectedAt          DateTime?
+  deliveredAt          DateTime?
+  notes                 String?           @db.Text
+  subtotal              Decimal           @db.Decimal(12, 2)
+  discount              Decimal           @default(0) @db.Decimal(12, 2)
+  collectionFee         Decimal           @default(0) @db.Decimal(12, 2)
+  deliveryFee           Decimal           @default(0) @db.Decimal(12, 2)
+  total                  Decimal           @db.Decimal(12, 2)
+  pieceCount            Int               @default(0)
+  volumeCount           Int               @default(1)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  customer              User              @relation("CustomerOrders", fields: [customerId], references: [id], onDelete: Restrict)
+  collectionAddress     Address           @relation("CollectionAddress", fields: [collectionAddressId], references: [id], onDelete: Restrict)
+  deliveryAddress       Address           @relation("DeliveryAddress", fields: [deliveryAddressId], references: [id], onDelete: Restrict)
+  assignedEmployee      User?             @relation("AssignedEmployeeOrders", fields: [assignedEmployeeId], references: [id], onDelete: SetNull)
+  coupon                Coupon?           @relation(fields: [couponId], references: [id], onDelete: SetNull)
+  items                 OrderItem[]
+  payments              Payment[]
+  voucher               Voucher?
+  routes                 DeliveryRoute[]
+  statusHistory          OrderStatusHistory[]
+  proofs                 DeliveryProof[]
+  lockerAuthorization    LockerAuthorization?
+
+  @@index([customerId, createdAt])
+  @@index([status, collectionAt])
+  @@index([assignedEmployeeId, status])
+}
+
+model OrderItem {
+  id          String   @id @default(cuid())
+  orderId     String
+  serviceId   String
+  serviceName String
+  unit        ServiceUnit
+  quantity    Decimal  @db.Decimal(12, 2)
+  unitPrice   Decimal  @db.Decimal(12, 2)
+  total       Decimal  @db.Decimal(12, 2)
+  notes       String?  @db.Text
+  order       Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  service     Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+}
+
+model Payment {
+  id                 String        @id @default(cuid())
+  orderId            String
+  method             PaymentMethod
+  status             PaymentStatus @default(PENDING)
+  amount             Decimal       @db.Decimal(12, 2)
+  provider           String        @default("PAGBANK")
+  providerOrderId    String?
+  providerChargeId   String?
+  providerTransactionId String?
+  idempotencyKey     String        @unique
+  pixQrCodeText      String?       @db.Text
+  pixQrCodeImageUrl  String?       @db.Text
+  paidAt             DateTime?
+  rawResponse         Json?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  order              Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, status])
+  @@index([providerOrderId])
+  @@index([providerChargeId])
+}
+
+model Voucher {
+  id             String   @id @default(cuid())
+  orderId        String   @unique
+  code           String   @unique
+  qrPayload      String   @db.Text
+  issuedAt       DateTime @default(now())
+  order          Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model DeliveryRoute {
+  id          String      @id @default(cuid())
+  orderId     String
+  driverId    String
+  type        RouteType
+  status      RouteStatus @default(PENDING)
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  order       Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  driver      User        @relation("DriverRoutes", fields: [driverId], references: [id], onDelete: Restrict)
+  locations   DriverLocation[]
+
+  @@index([driverId, status])
+  @@index([orderId, type])
+}
+
+model DriverLocation {
+  id        String        @id @default(cuid())
+  driverId  String
+  routeId   String
+  latitude  Decimal       @db.Decimal(10, 7)
+  longitude Decimal       @db.Decimal(10, 7)
+  accuracy  Decimal?      @db.Decimal(10, 2)
+  heading   Decimal?      @db.Decimal(10, 2)
+  speed     Decimal?      @db.Decimal(10, 2)
+  createdAt DateTime      @default(now())
+  driver    User          @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  route     DeliveryRoute @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@index([routeId, createdAt])
+}
+
+model DeliveryProof {
+  id          String    @id @default(cuid())
+  orderId     String
+  uploadedById String
+  type        ProofType
+  fileUrl     String?   @db.Text
+  fileData    Bytes?
+  mimeType    String?
+  fileName    String?
+  textValue   String?   @db.Text
+  createdAt   DateTime  @default(now())
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  uploadedBy  User      @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@index([orderId, createdAt])
+}
+
+model OrderStatusHistory {
+  id         String      @id @default(cuid())
+  orderId    String
+  actorId    String?
+  fromStatus OrderStatus?
+  toStatus   OrderStatus
+  note       String?     @db.Text
+  createdAt  DateTime    @default(now())
+  order      Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  actor      User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([orderId, createdAt])
+}
+
+model Locker {
+  id           String       @id @default(cuid())
+  externalId   String       @unique
+  name         String
+  locationName String
+  address      String
+  compartment  String?
+  status       LockerStatus @default(AVAILABLE)
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  authorizations LockerAuthorization[]
+}
+
+model LockerAuthorization {
+  id             String                    @id @default(cuid())
+  orderId        String                    @unique
+  lockerId       String
+  status         LockerAuthorizationStatus @default(PENDING)
+  accessCode     String?
+  validFrom      DateTime
+  validUntil     DateTime
+  controllerRef  String?
+  errorMessage   String?                   @db.Text
+  authorizedAt   DateTime?
+  usedAt         DateTime?
+  createdAt      DateTime                  @default(now())
+  updatedAt      DateTime                  @updatedAt
+  order          Order                     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  locker         Locker                    @relation(fields: [lockerId], references: [id], onDelete: Restrict)
+}
+
+model AuditLog {
+  id         String      @id @default(cuid())
+  actorId    String?
+  action     AuditAction
+  entity     String
+  entityId   String?
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?     @db.Text
+  createdAt  DateTime    @default(now())
+  actor      User?       @relation("ActorAuditLogs", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([entity, entityId, createdAt])
+}
+
+model SystemSetting {
+  id        String   @id @default("main")
+  storeName String   @default("Lavanderia Digital")
+  phone     String?
+  whatsapp  String?
+  supportEmail String?
+  pixEnabled Boolean @default(true)
+  creditCardEnabled Boolean @default(true)
+  debitCardEnabled Boolean @default(false)
+  defaultDeliveryHours Int @default(48)
+  updatedAt DateTime @updatedAt
+}

@@ -1,0 +1,17 @@
+import Link from "next/link";
+import { ArrowRight, CalendarCheck, CreditCard, MapPin, PackageCheck, ShieldCheck, Sparkles, WashingMachine } from "lucide-react";
+import { Button } from "@/components/ui/button";
+
+export default function HomePage() {
+  return <main className="min-h-screen bg-white">
+    <header className="border-b bg-white/95 backdrop-blur"><div className="mx-auto flex h-16 w-[min(1160px,calc(100%-32px))] items-center justify-between">
+      <div className="flex items-center gap-2.5 font-semibold"><span className="grid size-9 place-items-center rounded-[10px] bg-[var(--brand)] text-white"><WashingMachine className="size-5" /></span>{process.env.NEXT_PUBLIC_APP_NAME ?? "Lavanderia Digital"}</div>
+      <div className="flex items-center gap-2"><Button asChild variant="ghost"><Link href="/entrar">Entrar</Link></Button><Button asChild><Link href="/cadastro">Criar conta</Link></Button></div>
+    </div></header>
+    <section className="soft-grid border-b"><div className="mx-auto grid min-h-[610px] w-[min(1160px,calc(100%-32px))] items-center gap-10 py-14 lg:grid-cols-[1.08fr_.92fr]">
+      <div><span className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-[var(--brand)]"><Sparkles className="size-3.5"/> Sua lavanderia sem complicação</span><h1 className="mt-5 max-w-2xl text-4xl font-[780] tracking-[-.045em] text-slate-900 sm:text-5xl">Agende, pague e acompanhe suas roupas do celular.</h1><p className="mt-5 max-w-xl text-base leading-7 text-slate-600">Escolha os serviços, marque a coleta, pague por PIX ou cartão e acompanhe cada etapa até a entrega.</p><div className="mt-7 flex flex-wrap gap-3"><Button asChild size="lg"><Link href="/cadastro">Agendar agora <ArrowRight className="size-4"/></Link></Button><Button asChild size="lg" variant="outline"><Link href="/entrar">Acompanhar pedido</Link></Button></div></div>
+      <div className="rounded-[18px] border bg-white p-4 shadow-[0_24px_60px_rgba(23,55,79,.12)]"><div className="rounded-xl bg-slate-50 p-5"><div className="mb-5 flex items-center justify-between"><div><p className="text-xs text-slate-500">Próximo pedido</p><strong className="text-lg">LAV-20260810-01A2B3</strong></div><span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[var(--brand)]">Em processamento</span></div><div className="grid gap-3 sm:grid-cols-2">{[[CalendarCheck,"Entrega prevista","12 ago, 17:00"],[PackageCheck,"Serviços","5 itens"],[CreditCard,"Pagamento","PIX aprovado"],[MapPin,"Endereço","Av. Paulista, 1000"]].map(([Icon,label,value]:any)=><div key={label} className="rounded-xl border bg-white p-4"><Icon className="mb-3 size-5 text-[var(--brand)]"/><div className="text-[11px] text-slate-500">{label}</div><div className="mt-1 text-sm font-semibold">{value}</div></div>)}</div></div></div>
+    </div></section>
+    <section className="mx-auto grid w-[min(1160px,calc(100%-32px))] gap-4 py-14 md:grid-cols-3">{[[CalendarCheck,"Coleta agendada","Escolha o melhor dia e horário para buscar suas roupas."],[ShieldCheck,"Pagamento seguro","PIX e cartões processados pela infraestrutura do PagBank."],[MapPin,"Acompanhe a rota","Veja o motorista responsável durante a coleta ou entrega."]].map(([Icon,title,text]:any)=><div key={title} className="rounded-xl border p-5"><Icon className="size-5 text-[var(--brand)]"/><h2 className="mt-4 font-semibold">{title}</h2><p className="mt-2 text-sm leading-6 text-slate-500">{text}</p></div>)}</section>
+  </main>;
+}
