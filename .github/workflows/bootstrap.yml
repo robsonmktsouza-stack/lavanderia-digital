@@ -1,8 +1,9 @@
 name: Bootstrap source
 
 on:
-  push:
+  pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -13,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
 
       - name: Expand project source
         shell: bash
@@ -30,4 +33,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
           git commit -m "Publica código-fonte do projeto"
-          git push
+          git push origin HEAD:${{ github.head_ref }}
