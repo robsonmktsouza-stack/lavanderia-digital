@@ -13,6 +13,7 @@ const demoUsers = {
 } as const;
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.AUTH_SECRET ?? (!process.env.DATABASE_URL ? "lavanderia-digital-demo-only-secret-v1" : undefined),
   trustHost: true,
   session: { strategy: "jwt", maxAge: 60 * 60 * 24 * 14 },
   pages: { signIn: "/entrar" },
