@@ -22,7 +22,9 @@ jobs:
         run: |
           rm -rf /tmp/lavanderia-src
           mkdir -p /tmp/lavanderia-src
-          tar -xJf bootstrap/lavanderia-digital.tar.xz -C /tmp/lavanderia-src
+          cat bootstrap/part-* > /tmp/lavanderia-digital.tar.xz
+          xz -t /tmp/lavanderia-digital.tar.xz
+          tar -xJf /tmp/lavanderia-digital.tar.xz -C /tmp/lavanderia-src
           cp -a /tmp/lavanderia-src/lavanderia-digital/. .
           rm -rf bootstrap .github/workflows/bootstrap.yml
 
